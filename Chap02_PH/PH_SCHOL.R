@@ -90,86 +90,193 @@ nar_gar <- function(Rate,Sch,Sch_age){
   BR_PMRdata$sch_age <- BR_PMRdata[[Sch_age]]
   wkdata <- BR_PMRdata %>% filter(sch_age==1)
   wkdata$sch <- wkdata[[Sch]]
-
-  if (Rate=="nar"){
-    
-    # Total
-    # NAR primary   - total population
-     wkdata0 <- wkdata %>% summarise(Total = weighted.mean(sch, wt, na.rm=TRUE)) %>% 
-       mutate(class="National")%>% mutate(levels=0)%>% select(c(Total,class,levels))
-    # NAR primary   - urban/rural
-     wkdata1 <- wkdata %>% group_by(hv025) %>% summarise(Total = weighted.mean(sch, wt, na.rm=TRUE)) %>% 
-       mutate(class="urban/rural")%>% mutate(levels=hv025)%>% select(c(Total,class,levels))
-    # NAR primary   - region
-     wkdata2 <- wkdata %>% group_by(hv024) %>% summarise(Total = weighted.mean(sch, wt, na.rm=TRUE))%>% 
-       mutate(class="region")%>% mutate(levels=hv024)%>% select(c(Total,class,levels))
-    # NAR primary   - wealth index
-     wkdata3 <- wkdata %>% group_by(hv270) %>% summarise(Total = weighted.mean(sch, wt, na.rm=TRUE))%>% 
-       mutate(class="wealth")%>% mutate(levels=hv270)%>% select(c(Total,class,levels))
-
-    resc_all <- (rbind(wkdata0,wkdata1,wkdata2,wkdata3))
-    
-    # Male/Female  
-    # NAR primary   - total population
-     wkdata0 <- wkdata %>% group_by(hv104) %>% summarise(Total = weighted.mean(sch, wt, na.rm=TRUE))%>% 
-       mutate(class="National")%>% mutate(levels=0)%>% select(c(hv104,Total,class,levels))
-    # NAR primary   - urban/rural
-     wkdata1 <- wkdata %>% group_by(hv104,hv025) %>% summarise(Total = weighted.mean(sch, wt, na.rm=TRUE))%>% 
-       mutate(class="urban/rural")%>% mutate(levels=hv025)%>% select(c(hv104,Total,class,levels))
-    # NAR primary   - region
-     wkdata2 <- wkdata %>% group_by(hv104,hv024) %>% summarise(Total = weighted.mean(sch, wt, na.rm=TRUE))%>% 
-       mutate(class="region")%>% mutate(levels=hv024)%>% select(c(hv104,Total,class,levels))
-    # NAR primary   - wealth index
-     wkdata3 <- wkdata %>% group_by(hv104,hv270) %>% summarise(Total = weighted.mean(sch, wt, na.rm=TRUE))%>% 
-       mutate(class="wealth")%>% mutate(levels=hv270)%>% select(c(hv104,Total,class,levels))
-
-    resc <- (rbind(wkdata0,wkdata1,wkdata2,wkdata3))
-
-    return(NAR) 
-  }  
-  else {
-    
-    dstrata <- wkdata %>%
-      as_survey_design(cluster= hv021, strata = hv023, weights = wt)
-    
-    wkdata0 <- dstrata %>% summarise(Total = survey_ratio(sch,sch_age)) %>%
-      mutate(class="National")%>% mutate(levels=0) %>% select(c(Total,class,levels))
-    wkdata1 <- dstrata %>% group_by(hv025) %>% summarise(Total = survey_ratio(sch,sch_age))%>% 
-      mutate(class="Urban/rural")%>% mutate(levels=hv025) %>% select(c(Total,class,levels))
-    wkdata2 <- dstrata %>% group_by(hv024) %>% summarise(Total = survey_ratio(sch,sch_age))%>%
-      mutate(class="Region")%>% mutate(levels=hv024)%>% select(c(Total,class,levels))
-    wkdata3 <- dstrata %>% group_by(hv270) %>% summarise(Total = survey_ratio(sch,sch_age))%>% 
-      mutate(class="Wealth")%>% mutate(levels=hv270) %>% select(c(Total,class,levels))
-    
-    resc_all <- (rbind(wkdata0,wkdata1,wkdata2,wkdata3))
-    resc_all <- resc_all %>% mutate(Total=Total*100)
-    
-    wkdata0 <- dstrata %>% group_by(hv104) %>% summarise(Total = survey_ratio(sch,sch_age)) %>%
-      mutate(class="National")%>% mutate(levels=0) %>% select(c(hv104,Total,class,levels))
-    wkdata1 <- dstrata %>% group_by(hv104,hv025) %>% summarise(Total = survey_ratio(sch,sch_age))%>% 
-      mutate(class="Urban/rural")%>% mutate(levels=hv025) %>% select(c(hv104,Total,class,levels))
-    wkdata2 <- dstrata %>% group_by(hv104,hv024) %>% summarise(Total = survey_ratio(sch,sch_age))%>%
-      mutate(class="Region")%>% mutate(levels=hv024)%>% select(c(hv104,Total,class,levels))
-    wkdata3 <- dstrata %>% group_by(hv104,hv270) %>% summarise(Total = survey_ratio(sch,sch_age))%>% 
-      mutate(class="Wealth")%>% mutate(levels=hv270) %>% select(c(hv104,Total,class,levels))
-    
-    resc <- (rbind(wkdata0,wkdata1,wkdata2,wkdata3))
-    resc <- resc %>% mutate(Total=Total*100)
-    
-    resc_m <- resc %>% filter(hv104==1) %>% rename(Males=Total)  
-    resc_f <- resc %>% filter(hv104==2) %>% rename(Females=Total)  
-    
-    GAR <- merge(resc_m, resc_f, by = c("class", "levels"), all.y = TRUE, all.x = TRUE)
-    GAR <- merge(GAR, resc_all, by = c("class", "levels"), all.y = TRUE, all.x = TRUE)
-    GAR <- GAR %>% mutate(GAR_GPI=Females/Males) 
-    
-    return(GAR) 
-  }
   
-}	
+################ PRIMARY SCHOOL ###########################
+  if(Sch=="prim"){
+    if ((Rate=="NAR")&(by=="all")){
+      
+      # Total
+      # NAR primary   - total population
+       wkdata0 <- wkdata %>% summarise(Total = weighted.mean(sch, wt, na.rm=TRUE)) %>% 
+         mutate(class="National")%>% mutate(levels=0)%>% select(c(Total,class,levels))
+      # NAR primary   - urban/rural
+       wkdata1 <- wkdata %>% group_by(hv025) %>% summarise(Total = weighted.mean(sch, wt, na.rm=TRUE)) %>% 
+         mutate(class="urban/rural")%>% mutate(levels=hv025)%>% select(c(Total,class,levels))
+      # NAR primary   - region
+       wkdata2 <- wkdata %>% group_by(hv024) %>% summarise(Total = weighted.mean(sch, wt, na.rm=TRUE))%>% 
+         mutate(class="region")%>% mutate(levels=hv024)%>% select(c(Total,class,levels))
+      # NAR primary   - wealth index
+       wkdata3 <- wkdata %>% group_by(hv270) %>% summarise(Total = weighted.mean(sch, wt, na.rm=TRUE))%>% 
+         mutate(class="wealth")%>% mutate(levels=hv270)%>% select(c(Total,class,levels))
+  
+      resc_all <- (rbind(wkdata0,wkdata1,wkdata2,wkdata3))
+      return(resc_all) 
+    }  
+  
+  
+  else if ((Rate=="NAR")&(by=="sex")){
+      # Male/Female  
+      # NAR primary   - total population
+       wkdata0 <- wkdata %>% group_by(hv104) %>% summarise(Total = weighted.mean(sch, wt, na.rm=TRUE))%>% 
+         mutate(class="National")%>% mutate(levels=0)%>% select(c(hv104,Total,class,levels))
+      # NAR primary   - urban/rural
+       wkdata1 <- wkdata %>% group_by(hv104,hv025) %>% summarise(Total = weighted.mean(sch, wt, na.rm=TRUE))%>% 
+         mutate(class="urban/rural")%>% mutate(levels=hv025)%>% select(c(hv104,Total,class,levels))
+      # NAR primary   - region
+       wkdata2 <- wkdata %>% group_by(hv104,hv024) %>% summarise(Total = weighted.mean(sch, wt, na.rm=TRUE))%>% 
+         mutate(class="region")%>% mutate(levels=hv024)%>% select(c(hv104,Total,class,levels))
+      # NAR primary   - wealth index
+       wkdata3 <- wkdata %>% group_by(hv104,hv270) %>% summarise(Total = weighted.mean(sch, wt, na.rm=TRUE))%>% 
+         mutate(class="wealth")%>% mutate(levels=hv270)%>% select(c(hv104,Total,class,levels))
+  
+      resc <- (rbind(wkdata0,wkdata1,wkdata2,wkdata3))
+  
+      return(resc) 
+    }  
+  
+  
+  
+  
+    
+    else if((Rate=="GAR")&(by=="all")) {
+      
+      dstrata <- wkdata %>%
+        as_survey_design(cluster= hv021, strata = hv023, weights = wt)
+      
+      wkdata0 <- dstrata %>% summarise(Total = survey_ratio(sch,sch_age)) %>%
+        mutate(class="National")%>% mutate(levels=0) %>% select(c(Total,class,levels))
+      wkdata1 <- dstrata %>% group_by(hv025) %>% summarise(Total = survey_ratio(sch,sch_age))%>% 
+        mutate(class="Urban/rural")%>% mutate(levels=hv025) %>% select(c(Total,class,levels))
+      wkdata2 <- dstrata %>% group_by(hv024) %>% summarise(Total = survey_ratio(sch,sch_age))%>%
+        mutate(class="Region")%>% mutate(levels=hv024)%>% select(c(Total,class,levels))
+      wkdata3 <- dstrata %>% group_by(hv270) %>% summarise(Total = survey_ratio(sch,sch_age))%>% 
+        mutate(class="Wealth")%>% mutate(levels=hv270) %>% select(c(Total,class,levels))
+      
+      resc_all <- (rbind(wkdata0,wkdata1,wkdata2,wkdata3))
+      resc_all <- resc_all %>% mutate(Total=Total*100)
 
-ph_sch_nar_prim <- nar_gar(Rate="NAR",Sch="prim",Sch_age="prim_age")
-ph_sch_nar_sec <- nar_gar(Rate="NAR",Sch="sec",Sch_age="sec_age")
-ph_sch_gar_prim <- nar_gar(Rate="GAR",Sch="prim",Sch_age="prim_age")
-ph_sch_gar_sec <- nar_gar(Rate="GAR",Sch="sec",Sch_age="sec_age")
+      
+      
+      wkdata0 <- dstrata %>% group_by(hv104) %>% summarise(Total = survey_ratio(sch,sch_age)) %>%
+        mutate(class="National")%>% mutate(levels=0) %>% select(c(hv104,Total,class,levels))
+      wkdata1 <- dstrata %>% group_by(hv104,hv025) %>% summarise(Total = survey_ratio(sch,sch_age))%>% 
+        mutate(class="Urban/rural")%>% mutate(levels=hv025) %>% select(c(hv104,Total,class,levels))
+      wkdata2 <- dstrata %>% group_by(hv104,hv024) %>% summarise(Total = survey_ratio(sch,sch_age))%>%
+        mutate(class="Region")%>% mutate(levels=hv024)%>% select(c(hv104,Total,class,levels))
+      wkdata3 <- dstrata %>% group_by(hv104,hv270) %>% summarise(Total = survey_ratio(sch,sch_age))%>% 
+        mutate(class="Wealth")%>% mutate(levels=hv270) %>% select(c(hv104,Total,class,levels))
+      
+      resc <- (rbind(wkdata0,wkdata1,wkdata2,wkdata3))
+      resc <- resc %>% mutate(Total=Total*100)
+      
+      resc_m <- resc %>% filter(hv104==1) %>% rename(Males=Total)  
+      resc_f <- resc %>% filter(hv104==2) %>% rename(Females=Total)  
+      
+      GAR <- merge(resc_m, resc_f, by = c("class", "levels"), all.y = TRUE, all.x = TRUE)
+      GAR <- merge(GAR, resc_all, by = c("class", "levels"), all.y = TRUE, all.x = TRUE)
+      GAR <- GAR %>% mutate(GAR_GPI=Females/Males) 
+      
+      return(GAR) 
+    }
+    
+  }	
+  #################### SECONDARY SCHOOL ######################
+}else if(Sch=="sec"){
+  if ((Rate=="NAR")&(by=="all")){
+      
+      # Total
+      # NAR primary   - total population
+       wkdata0 <- wkdata %>% summarise(Total = weighted.mean(sch, wt, na.rm=TRUE)) %>% 
+         mutate(class="National")%>% mutate(levels=0)%>% select(c(Total,class,levels))
+      # NAR primary   - urban/rural
+       wkdata1 <- wkdata %>% group_by(hv025) %>% summarise(Total = weighted.mean(sch, wt, na.rm=TRUE)) %>% 
+         mutate(class="urban/rural")%>% mutate(levels=hv025)%>% select(c(Total,class,levels))
+      # NAR primary   - region
+       wkdata2 <- wkdata %>% group_by(hv024) %>% summarise(Total = weighted.mean(sch, wt, na.rm=TRUE))%>% 
+         mutate(class="region")%>% mutate(levels=hv024)%>% select(c(Total,class,levels))
+      # NAR primary   - wealth index
+       wkdata3 <- wkdata %>% group_by(hv270) %>% summarise(Total = weighted.mean(sch, wt, na.rm=TRUE))%>% 
+         mutate(class="wealth")%>% mutate(levels=hv270)%>% select(c(Total,class,levels))
+  
+      resc_all <- (rbind(wkdata0,wkdata1,wkdata2,wkdata3))
+      return(resc_all) 
+    }  
+  
+  
+  else if ((Rate=="NAR")&(by=="sex")){
+      # Male/Female  
+      # NAR primary   - total population
+       wkdata0 <- wkdata %>% group_by(hv104) %>% summarise(Total = weighted.mean(sch, wt, na.rm=TRUE))%>% 
+         mutate(class="National")%>% mutate(levels=0)%>% select(c(hv104,Total,class,levels))
+      # NAR primary   - urban/rural
+       wkdata1 <- wkdata %>% group_by(hv104,hv025) %>% summarise(Total = weighted.mean(sch, wt, na.rm=TRUE))%>% 
+         mutate(class="urban/rural")%>% mutate(levels=hv025)%>% select(c(hv104,Total,class,levels))
+      # NAR primary   - region
+       wkdata2 <- wkdata %>% group_by(hv104,hv024) %>% summarise(Total = weighted.mean(sch, wt, na.rm=TRUE))%>% 
+         mutate(class="region")%>% mutate(levels=hv024)%>% select(c(hv104,Total,class,levels))
+      # NAR primary   - wealth index
+       wkdata3 <- wkdata %>% group_by(hv104,hv270) %>% summarise(Total = weighted.mean(sch, wt, na.rm=TRUE))%>% 
+         mutate(class="wealth")%>% mutate(levels=hv270)%>% select(c(hv104,Total,class,levels))
+  
+      resc <- (rbind(wkdata0,wkdata1,wkdata2,wkdata3))
+  
+      return(resc) 
+    }  
+  
+  
+  
+  
+    
+    else if((Rate=="NAR")&(by=="all")) {
+      
+      dstrata <- wkdata %>%
+        as_survey_design(cluster= hv021, strata = hv023, weights = wt)
+      
+      wkdata0 <- dstrata %>% summarise(Total = survey_ratio(sch,sch_age)) %>%
+        mutate(class="National")%>% mutate(levels=0) %>% select(c(Total,class,levels))
+      wkdata1 <- dstrata %>% group_by(hv025) %>% summarise(Total = survey_ratio(sch,sch_age))%>% 
+        mutate(class="Urban/rural")%>% mutate(levels=hv025) %>% select(c(Total,class,levels))
+      wkdata2 <- dstrata %>% group_by(hv024) %>% summarise(Total = survey_ratio(sch,sch_age))%>%
+        mutate(class="Region")%>% mutate(levels=hv024)%>% select(c(Total,class,levels))
+      wkdata3 <- dstrata %>% group_by(hv270) %>% summarise(Total = survey_ratio(sch,sch_age))%>% 
+        mutate(class="Wealth")%>% mutate(levels=hv270) %>% select(c(Total,class,levels))
+      
+      resc_all <- (rbind(wkdata0,wkdata1,wkdata2,wkdata3))
+      resc_all <- resc_all %>% mutate(Total=Total*100)
+      
+      wkdata0 <- dstrata %>% group_by(hv104) %>% summarise(Total = survey_ratio(sch,sch_age)) %>%
+        mutate(class="National")%>% mutate(levels=0) %>% select(c(hv104,Total,class,levels))
+      wkdata1 <- dstrata %>% group_by(hv104,hv025) %>% summarise(Total = survey_ratio(sch,sch_age))%>% 
+        mutate(class="Urban/rural")%>% mutate(levels=hv025) %>% select(c(hv104,Total,class,levels))
+      wkdata2 <- dstrata %>% group_by(hv104,hv024) %>% summarise(Total = survey_ratio(sch,sch_age))%>%
+        mutate(class="Region")%>% mutate(levels=hv024)%>% select(c(hv104,Total,class,levels))
+      wkdata3 <- dstrata %>% group_by(hv104,hv270) %>% summarise(Total = survey_ratio(sch,sch_age))%>% 
+        mutate(class="Wealth")%>% mutate(levels=hv270) %>% select(c(hv104,Total,class,levels))
+      
+      resc <- (rbind(wkdata0,wkdata1,wkdata2,wkdata3))
+      resc <- resc %>% mutate(Total=Total*100)
+      
+      resc_m <- resc %>% filter(hv104==1) %>% rename(Males=Total)  
+      resc_f <- resc %>% filter(hv104==2) %>% rename(Females=Total)  
+      
+      GAR <- merge(resc_m, resc_f, by = c("class", "levels"), all.y = TRUE, all.x = TRUE)
+      GAR <- merge(GAR, resc_all, by = c("class", "levels"), all.y = TRUE, all.x = TRUE)
+      GAR <- GAR %>% mutate(GAR_GPI=Females/Males) 
+      
+      return(GAR) 
+    }
+    
+  }	
+}
 
+ph_sch_nar_prim <- nar_gar(Rate="NAR",by="all",Sch="prim",Sch_age="prim_age")
+ph_sch_nar_prim <- nar_gar(Rate="NAR",by="sex",Sch="prim",Sch_age="prim_age")
+
+ph_sch_nar_sec <- nar_gar(Rate="NAR",by="all",Sch="sec",Sch_age="sec_age")
+ph_sch_nar_sec <- nar_gar(Rate="NAR",by="sex",Sch="sec",Sch_age="sec_age")
+
+ph_sch_gar_prim <- nar_gar(Rate="GAR",by="all",Sch="prim",Sch_age="prim_age")
+ph_sch_gar_prim <- nar_gar(Rate="GAR",by="sex",Sch="prim",Sch_age="prim_age")
+
+ph_sch_gar_sec <- nar_gar(Rate="GAR",by="all",Sch="sec",Sch_age="sec_age")
+ph_sch_gar_sec <- nar_gar(Rate="GAR",by="sex",Sch="sec",Sch_age="sec_age")
